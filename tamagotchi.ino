@@ -29,17 +29,19 @@ unsigned long previousMillis = 0; // Save the last time happiness was decreased
 const long interval = 60000;     // Interval of 1 minute in milliseconds
 unsigned long levelMillis = 0;   // Timer for level up
 const long levelInterval = 3600000; // Interval of 1 hour in milliseconds (1 hour)
-
-// Timer for egg jiggle
-unsigned long jiggleMillis = 0; // Track the last jiggle time
-const long jiggleInterval = 1000; // Interval for jiggle effect (1 second)
-
+unsigned long jiggleMili = 0; // this is the timer for jiggle
+const long jiggleInterval = 1000;
+unsigned long jiggleYCounter = 310;
 
 // Button area settings for feeding the pet
 #define FEED_X1 50
 #define FEED_Y1 160
 #define FEED_X2 250
 #define FEED_Y2 210
+
+// Variables for masking
+int lastEggX = FEED_X1 + 100; // Initialize with the first egg position
+int lastEggY = FEED_Y2 + 100; // Initialize with the first egg position
 
 void setup() {
     Serial.begin(9600);
@@ -90,6 +92,22 @@ void loop() {
           health ++;
         }
         drawPetStatus(); // Refresh UI to show updated happiness
+            // Draw the Egg Below
+        drawEgg(FEED_X1 + 100, FEED_Y2 + 100); // Position egg right below the feed button
+    }
+
+        // Timer for level up
+    if (currentMillis - jiggleMili >= jiggleInterval) {
+        jiggleMili = currentMillis; // Save the last time level was increased
+
+        drawEgg( + 100, jiggleYCounter); // Position egg right below the feed button
+ 
+        jiggleYCounter += 10;
+
+        if (jiggleYCounter >= 430) {
+          jiggleYCounter = 310;
+        }
+        
     }
 
     // Timer for level up
@@ -99,6 +117,7 @@ void loop() {
             level++; // Increase level if health is above 0
         }
         drawPetStatus(); // Refresh UI to show updated level
+        drawEgg(FEED_X1 + 100, FEED_Y2 + 100); // Position egg right below the feed button
     }
 
     delay(50); // Short delay to reduce CPU load
@@ -130,42 +149,29 @@ void drawPetStatus() {
     tft.setTextColor(BLACK);
     tft.setTextSize(2);
     tft.println("Feed Pet");
-
-    // Draw the Egg Below
-    drawEgg(FEED_X1 + 100, FEED_Y2 + 100); // Position egg right below the feed button
 }
 
-// Function to draw a filled egg with spots using drawPixel
+// Function to draw a filled egg (adjusting the function to clear previous egg)
 void drawEgg(int x, int y) {
+    // Clear the last egg drawn
+    tft.fillRect(lastEggX - 60, lastEggY - 60, 120, 120, BLACK); // Clear area where the last egg was
+    
     int eggWidth = 30;  // Width of the egg
     int eggHeight = 40; // Height of the egg
 
-    // Draw the filled egg shape
-    for (int i = -eggWidth; i <= eggWidth; i++) {
-        // Calculate the height based on the ellipse formula
-        int h = (int)(eggHeight * sqrt(1 - (double)(i * i) / (eggWidth * eggWidth))); 
-
-        // Draw the upper part of the egg (negative y direction)
-        for (int j = 0; j <= h; j++) {
-            tft.drawPixel(x + i, y - j, WHITE); // Draw the pixels for the upper part
-        }
-
-        // Draw the lower part of the egg (positive y direction)
-        for (int j = 0; j <= h; j++) {
-            tft.drawPixel(x + i, y + j, WHITE); // Draw the pixels for the lower part
-        }
-    }
-
-    // Draw spots on the egg using small circles
-    drawSpot(x - 10, y, GREEN);      // Spot 1
-    drawSpot(x + 10, y - 5, GREEN);  // Spot 2
-    drawSpot(x - 5, y + 5, GREEN);   // Spot 3
-    drawSpot(x + 5, y + 10, GREEN);  // Spot 4
+    tft.drawCircle(x,y,50,GREEN);
+    lastEggX = x; // Update last egg position
+    lastEggY = y; // Update last egg position
+    
+    // Draw spots on the egg
+    drawSpot(x - 10, y, 5, GREEN); 
+    drawSpot(x + 10, y - 5, 5, GREEN);  
+    drawSpot(x - 5, y + 5, 5, GREEN);   
+    drawSpot(x + 5, y + 10, 5, GREEN);  
 }
 
 // Function to draw a green circle (small spot)
-void drawSpot(int x, int y, uint16_t color) {
-    int radius = 5; // Radius of the spot
+void drawSpot(int x, int y,  int radius, uint16_t color) {
     for (int i = -radius; i <= radius; i++) {
         for (int j = -radius; j <= radius; j++) {
             if (i * i + j * j <= radius * radius) { // Check if within the circle
