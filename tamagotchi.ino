@@ -12,7 +12,7 @@
 #define BLACK   0x0000
 #define GREEN   0x07E0
 #define WHITE   0xFFFF
-
+#define YELLOW  0xFF00
 // Touchscreen initialization with screen resistance (300 ohms in this case)
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 MCUFRIEND_kbv tft;
@@ -151,25 +151,40 @@ void drawPetStatus() {
     tft.println("Feed Pet");
 }
 
-// Function to draw a filled egg (adjusting the function to clear previous egg)
+// Function to draw a filled egg (ellipse)
 void drawEgg(int x, int y) {
-    // Clear the last egg drawn
+   // Clear the last egg drawn
     tft.fillRect(lastEggX - 60, lastEggY - 60, 120, 120, BLACK); // Clear area where the last egg was
     
-    int eggWidth = 30;  // Width of the egg
-    int eggHeight = 40; // Height of the egg
+    int eggWidth = 30;  // Adjusted Width of the egg
+    int eggHeight = 40; // Adjusted Height of the egg
 
-    tft.drawCircle(x,y,50,GREEN);
+    // Draw the filled egg shape
+    for (int i = -eggWidth; i <= eggWidth; i++) {
+        // Calculate the height based on the elliptical shape
+        int h = (int)(eggHeight * sqrt(1 - (double)(i * i) / (eggWidth * eggWidth))); 
+
+        // Draw the upper part of the egg (negative y direction)
+        for (int j = 0; j <= h; j++) {
+            tft.drawPixel(x + i, y - j, WHITE); // Upper part of the egg
+        }
+
+        // Draw the lower part of the egg (positive y direction)
+        for (int j = 0; j <= h; j++) {
+            tft.drawPixel(x + i, y + j, WHITE); // Lower part of the egg
+        }
+    }
+
+
     lastEggX = x; // Update last egg position
     lastEggY = y; // Update last egg position
     
     // Draw spots on the egg
-    drawSpot(x - 10, y, 5, GREEN); 
-    drawSpot(x + 10, y - 5, 5, GREEN);  
-    drawSpot(x - 5, y + 5, 5, GREEN);   
-    drawSpot(x + 5, y + 10, 5, GREEN);  
+    drawSpot(x - 10, y - 10, 5, YELLOW); 
+    drawSpot(x + 10, y - 10, 5, YELLOW);  
+    drawSpot(x - 10, y + 10, 5, YELLOW);   
+    drawSpot(x + 10, y + 10, 5, YELLOW);  
 }
-
 // Function to draw a green circle (small spot)
 void drawSpot(int x, int y,  int radius, uint16_t color) {
     for (int i = -radius; i <= radius; i++) {
