@@ -1,6 +1,8 @@
 #include <Adafruit_GFX.h>
 #include <MCUFRIEND_kbv.h>
 #include "TouchScreen.h"
+#include <Math.h>  // Include for using trigonometric functions
+#include <limits.h>  // For INT_MAX
 
 // Pin Definitions for the TouchScreen
 #define YP A2  // Touchscreen Y+
@@ -9,10 +11,25 @@
 #define XP 9   // Touchscreen X+
 
 // Color Definitions
-#define BLACK   0x0000
-#define GREEN   0x07E0
-#define WHITE   0xFFFF
-#define YELLOW  0xFF00
+#define BLACK 0x0000
+#define NAVY 0x000F
+#define DARKGREEN 0x03E0
+#define DARKCYAN 0x03EF
+#define MAROON 0x7800
+#define PURPLE 0x780F
+#define OLIVE 0x7BE0
+#define LIGHTGREY 0xC618
+#define DARKGREY 0x7BEF
+#define BLUE 0x001F
+#define GREEN 0x07E0
+#define CYAN 0x07FF
+#define RED 0xF800
+#define MAGENTA 0xF81F
+#define YELLOW 0xFFE0
+#define WHITE 0xFFFF
+#define ORANGE 0xFD20
+#define GREENYELLOW 0xAFE5
+#define PINK 0xF81F
 // Touchscreen initialization with screen resistance (300 ohms in this case)
 TouchScreen ts = TouchScreen(XP, YP, XM, YM, 300);
 MCUFRIEND_kbv tft;
@@ -28,10 +45,8 @@ const int maxHealth = 10;        // Set max health level
 unsigned long previousMillis = 0; // Save the last time happiness was decreased
 const long interval = 60000;     // Interval of 1 minute in milliseconds
 unsigned long levelMillis = 0;   // Timer for level up
-const long levelInterval = 3600000; // Interval of 1 hour in milliseconds (1 hour)
-unsigned long jiggleMili = 0; // this is the timer for jiggle
-const long jiggleInterval = 1000;
-unsigned long jiggleYCounter = 310;
+const long levelInterval = 1800000; // Interval of 30 min in milliseconds (1 hour)
+float characterAngle = 0;
 
 // Button area settings for feeding the pet
 #define FEED_X1 50
@@ -52,6 +67,8 @@ void setup() {
     
     tft.begin(ID);
     drawPetStatus(); // Draw the initial UI
+    drawEgg(FEED_X1 + 100, FEED_Y2 + 100, characterAngle); // Position egg right below the feed button
+    
 }
 
 void loop() {
@@ -71,6 +88,16 @@ void loop() {
         if (p.x >= 350 && p.x <= 420 && p.y >= 250 && p.y <= 780) {
             feedPet(); // Feed the pet
             drawPetStatus(); // Refresh UI to show updated values
+            if ( level == 1 ) {
+              characterAngle += 90;
+              if ( characterAngle >= 360 ) {
+                characterAngle = 0;
+              }
+            }else {
+              characterAngle = 0;
+            }
+
+            drawEgg(FEED_X1 + 100, FEED_Y2 + 100, characterAngle); // Position egg right below the feed button
             delay(300); // Debounce delay
         }
     }
@@ -93,22 +120,9 @@ void loop() {
         }
         drawPetStatus(); // Refresh UI to show updated happiness
             // Draw the Egg Below
-        drawEgg(FEED_X1 + 100, FEED_Y2 + 100); // Position egg right below the feed button
+        drawEgg(FEED_X1 + 100, FEED_Y2 + 100, characterAngle); // Position egg right below the feed button
     }
 
-        // Timer for level up
-    if (currentMillis - jiggleMili >= jiggleInterval) {
-        jiggleMili = currentMillis; // Save the last time level was increased
-
-        drawEgg( + 100, jiggleYCounter); // Position egg right below the feed button
- 
-        jiggleYCounter += 10;
-
-        if (jiggleYCounter >= 430) {
-          jiggleYCounter = 310;
-        }
-        
-    }
 
     // Timer for level up
     if (currentMillis - levelMillis >= levelInterval) {
@@ -117,7 +131,7 @@ void loop() {
             level++; // Increase level if health is above 0
         }
         drawPetStatus(); // Refresh UI to show updated level
-        drawEgg(FEED_X1 + 100, FEED_Y2 + 100); // Position egg right below the feed button
+        drawEgg(FEED_X1 + 100, FEED_Y2 + 100, characterAngle); // Position egg right below the feed button
     }
 
     delay(50); // Short delay to reduce CPU load
@@ -148,43 +162,111 @@ void drawPetStatus() {
     tft.setCursor(FEED_X1 + 10, FEED_Y1 + 10);
     tft.setTextColor(BLACK);
     tft.setTextSize(2);
-    tft.println("Feed Pet");
+    if ( level == 1 ) {
+      tft.println("rotate egg");
+    }else{
+      tft.println("Feed Pet");
+    }
+    
 }
 
 // Function to draw a filled egg (ellipse)
-void drawEgg(int x, int y) {
-   // Clear the last egg drawn
+void drawEgg(int x, int y, float angle) {
+    // Clear the last egg drawn
     tft.fillRect(lastEggX - 60, lastEggY - 60, 120, 120, BLACK); // Clear area where the last egg was
     
     int eggWidth = 30;  // Adjusted Width of the egg
     int eggHeight = 40; // Adjusted Height of the egg
+
+    // Convert angle to radians for trigonometric functions
+    float radians = angle * (PI / 180.0);
+
+    // Draw level 2 sprite 
+    if (level >= 2) {
+        //draw cat head 
+        tft.fillCircle(x, y - 10, 25, LIGHTGREY);
+        // Draw cat eyes 
+        drawSpot(x - 10, y - 10, 5, GREENYELLOW); 
+        drawSpot(x + 10, y - 10, 5, GREENYELLOW); 
+        // Draw cat ears as triangles
+        drawTriangle(x - 20, y - 25, x - 10, y - 45, x, y - 25, LIGHTGREY);  // Left ear
+        drawTriangle(x , y - 25, x + 10, y - 45, x + 20, y - 25, LIGHTGREY);  // Left ear
+    }
+    if (level >= 3) {
+      //draw arms 
+      drawRotatedRectangle(x - 30, y , 10, 40, 45.0, LIGHTGREY);
+      drawRotatedRectangle(x + 30, y , 10, 40, -45.0, LIGHTGREY);
+    }
+    if (level >= 4) {
+      //draw legs 
+      drawRotatedRectangle(x - 20, y + 30 , 10, 40, 20.0, LIGHTGREY);
+      drawRotatedRectangle(x + 20, y + 30 , 10, 40, -20.0, LIGHTGREY);
+    }
 
     // Draw the filled egg shape
     for (int i = -eggWidth; i <= eggWidth; i++) {
         // Calculate the height based on the elliptical shape
         int h = (int)(eggHeight * sqrt(1 - (double)(i * i) / (eggWidth * eggWidth))); 
 
-        // Draw the upper part of the egg (negative y direction)
-        for (int j = 0; j <= h; j++) {
-            tft.drawPixel(x + i, y - j, WHITE); // Upper part of the egg
+        // Calculate the rotated positions
+        int rotatedX = x + i * cos(radians) - h * sin(radians);
+        int rotatedY = y + i * sin(radians) + h * cos(radians);
+
+        // Draw bottom of egg
+        if ( level <= 3 ) {
+          for (int j = 0; j <= h; j++) {
+              int upperRotatedX = x + i * cos(radians) - j * sin(radians);
+              int upperRotatedY = y + i * sin(radians) + j * cos(radians);
+              tft.drawPixel(upperRotatedX, upperRotatedY, WHITE); // Upper part of the egg
+          }
+        }
+        
+        // Draw top of egg
+        if ( level == 1 ) {
+          for (int j = 0; j <= h; j++) {
+              int lowerRotatedX = x + i * cos(radians) + j * sin(radians);
+              int lowerRotatedY = y + i * sin(radians) - j * cos(radians);
+              tft.drawPixel(lowerRotatedX, lowerRotatedY, WHITE); // Lower part of the egg
+          }
         }
 
-        // Draw the lower part of the egg (positive y direction)
-        for (int j = 0; j <= h; j++) {
-            tft.drawPixel(x + i, y + j, WHITE); // Lower part of the egg
-        }
     }
-
 
     lastEggX = x; // Update last egg position
     lastEggY = y; // Update last egg position
-    
-    // Draw spots on the egg
-    drawSpot(x - 10, y - 10, 5, YELLOW); 
-    drawSpot(x + 10, y - 10, 5, YELLOW);  
-    drawSpot(x - 10, y + 10, 5, YELLOW);   
-    drawSpot(x + 10, y + 10, 5, YELLOW);  
+
+
 }
+
+// Function to draw a filled triangle
+void drawTriangle(int x1, int y1, int x2, int y2, int x3, int y3, uint16_t color) {
+    // Use a simple method to draw the filled triangle
+    for (int y = min(y1, min(y2, y3)); y <= max(y1, max(y2, y3)); y++) {
+        // Calculate the x bounds of the triangle for this y
+        int xLeft = x1, xRight = x1;
+
+        if (y2 != y1) {
+            float slope1 = (float)(x2 - x1) / (y2 - y1);
+            xLeft = x1 + (int)((y - y1) * slope1);
+        }
+        if (y3 != y1) {
+            float slope2 = (float)(x3 - x1) / (y3 - y1);
+            xRight = x1 + (int)((y - y1) * slope2);
+        }
+        
+        if (y3 != y2) {
+            float slope3 = (float)(x3 - x2) / (y3 - y2);
+            xLeft = min(xLeft, x2 + (int)((y - y2) * slope3));
+            xRight = max(xRight, x2 + (int)((y - y2) * slope3));
+        }
+
+        // Draw the line segment for the current y
+        for (int x = xLeft; x <= xRight; x++) {
+            tft.drawPixel(x, y, color);
+        }
+    }
+}
+
 // Function to draw a green circle (small spot)
 void drawSpot(int x, int y,  int radius, uint16_t color) {
     for (int i = -radius; i <= radius; i++) {
@@ -192,6 +274,102 @@ void drawSpot(int x, int y,  int radius, uint16_t color) {
             if (i * i + j * j <= radius * radius) { // Check if within the circle
                 tft.drawPixel(x + i, y + j, color); // Draw the pixel
             }
+        }
+    }
+}
+
+// Function to rotate a point around a center point
+void rotatePoint(int x, int y, float angle, float centerX, float centerY, int &rotatedX, int &rotatedY) {
+    float radians = angle * (PI / 180.0); // Convert angle to radians
+    rotatedX = centerX + (x - centerX) * cos(radians) - (y - centerY) * sin(radians);
+    rotatedY = centerY + (x - centerX) * sin(radians) + (y - centerY) * cos(radians);
+}
+
+// Function to draw a rotated rectangle
+void drawRotatedRectangle(int centerX, int centerY, int width, int height, float angle, uint16_t color) {
+    // Compute the rectangle's corner points before rotation
+    int halfWidth = width / 2;
+    int halfHeight = height / 2;
+
+    // Define the four corners of the rectangle relative to the center
+    int corners[4][2] = {
+        {centerX - halfWidth, centerY - halfHeight}, // Top-left
+        {centerX + halfWidth, centerY - halfHeight}, // Top-right
+        {centerX + halfWidth, centerY + halfHeight}, // Bottom-right
+        {centerX - halfWidth, centerY + halfHeight}  // Bottom-left
+    };
+
+    // Create an array to hold the rotated coordinates
+    int rotatedCorners[4][2];
+
+    // Rotate each corner around the center point
+    for (int i = 0; i < 4; i++) {
+        rotatePoint(corners[i][0], corners[i][1], angle, centerX, centerY, rotatedCorners[i][0], rotatedCorners[i][1]);
+    }
+
+    // Draw the edges of the rectangle using line drawing logic
+    for (int i = 0; i < 4; i++) {
+        int next = (i + 1) % 4; // Get the next corner index
+        drawLine(rotatedCorners[i][0], rotatedCorners[i][1], rotatedCorners[next][0], rotatedCorners[next][1], color);
+    }
+
+    // Optionally fill the rectangle using a fill algorithm (if desired)
+    fillRotatedRectangle(rotatedCorners, color);
+}
+
+// Function to draw a line between two points
+void drawLine(int x1, int y1, int x2, int y2, uint16_t color) {
+    // Calculate differences
+    int dx = x2 - x1;
+    int dy = y2 - y1;
+    int steps = abs(dx) > abs(dy) ? abs(dx) : abs(dy); // Number of steps to draw
+
+    // Increment for each step
+    float xIncrement = dx / (float)steps;
+    float yIncrement = dy / (float)steps;
+
+    float x = x1;
+    float y = y1;
+
+    // Draw the line pixel by pixel
+    for (int i = 0; i <= steps; i++) {
+        tft.drawPixel((int)x, (int)y, color); // Draw pixel
+        x += xIncrement; // Increment x
+        y += yIncrement; // Increment y
+    }
+}
+
+// Function to optionally fill the rotated rectangle (simple fill method)
+void fillRotatedRectangle(int rotatedCorners[4][2], uint16_t color) {
+    // This function can be implemented using scanline or other methods
+    // For simplicity, you can use a bounding box fill or another approach based on your graphics library's capabilities.
+    // Here is a simple example of filling between y-min and y-max boundaries for the X range. 
+
+    int minY = min(rotatedCorners[0][1], min(rotatedCorners[1][1], min(rotatedCorners[2][1], rotatedCorners[3][1])));
+    int maxY = max(rotatedCorners[0][1], max(rotatedCorners[1][1], max(rotatedCorners[2][1], rotatedCorners[3][1])));
+
+    // Fill between the y-bounds for x-bounds
+    for (int y = minY; y <= maxY; y++) {
+        // Calculate the leftmost and rightmost x-bounds at this y
+        int leftX = INT_MAX, rightX = INT_MIN;
+
+        for (int i = 0; i < 4; i++) {
+            int j = (i + 1) % 4; // Next vertex
+            // Check if the current edge intersects with the current y-line
+            if ((rotatedCorners[i][1] <= y && rotatedCorners[j][1] > y) || (rotatedCorners[j][1] <= y && rotatedCorners[i][1] > y)) {
+                // Calculate the x-coordinate of the intersection
+                float slope = (float)(rotatedCorners[j][0] - rotatedCorners[i][0]) / (rotatedCorners[j][1] - rotatedCorners[i][1]);
+                int intersectX = rotatedCorners[i][0] + (int)(slope * (y - rotatedCorners[i][1]));
+
+                // Update left and right x-bounds
+                leftX = min(leftX, intersectX);
+                rightX = max(rightX, intersectX);
+            }
+        }
+
+        // Fill the horizontal line segment between leftX and rightX at current y
+        for (int x = leftX; x <= rightX; x++) {
+            tft.drawPixel(x, y, color); // Draw pixel
         }
     }
 }
